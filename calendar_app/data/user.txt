@@ -1,0 +1,4 @@
+{
+  "userId": "user-001",
+  "fullName": "Guest User"
+}

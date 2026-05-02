@@ -1,0 +1,15 @@
+{
+  "appointmentId": "38734d9c-38e0-4192-a330-a08276ade49d",
+  "name": "Testing Group",
+  "location": "DHNN",
+  "startTime": "2026-05-03T11:00:00",
+  "endTime": "2026-05-03T14:00:00",
+  "isGroupMeeting": true,
+  "reminders": [],
+  "participants": [
+    "user-001",
+    "Hàng bel",
+    "Hùng bel",
+    "Hải bel"
+  ]
+}

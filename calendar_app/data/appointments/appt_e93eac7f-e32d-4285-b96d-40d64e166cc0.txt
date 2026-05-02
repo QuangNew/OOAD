@@ -1,0 +1,14 @@
+{
+  "appointmentId": "e93eac7f-e32d-4285-b96d-40d64e166cc0",
+  "name": "AI lecture",
+  "location": "DHBK Da Nang",
+  "startTime": "2026-05-03T09:00:00",
+  "endTime": "2026-05-03T10:00:00",
+  "isGroupMeeting": false,
+  "reminders": [
+    {
+      "reminderId": "7dbfa4dd-f120-43ba-9bd9-dedbc447dfae",
+      "message": "Quan trong vkl"
+    }
+  ]
+}
