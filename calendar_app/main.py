@@ -16,20 +16,17 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from storage.file_storage import FileStorage
-from models.user import User
 from models.calendar import Calendar
 from controller.appointment_controller import AppointmentController
+from ui.auth_ui import AuthUI
 from ui.calendar_ui import CalendarUI
 
 
 def main() -> None:
-    # ── Bootstrap user ─────────────────────────────────────────────
-    user_data = FileStorage.load_user()
-    if user_data:
-        user = User(user_id=user_data["userId"], full_name=user_data["fullName"])
-    else:
-        user = User(user_id="user-001", full_name="Guest User")
-        FileStorage.save_user(user)
+    auth = AuthUI()
+    user = auth.run()
+    if user is None:
+        return
 
     # ── Bootstrap calendar ─────────────────────────────────────────
     calendar = Calendar(calendar_id="cal-001")

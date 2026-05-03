@@ -25,8 +25,16 @@ class GroupMeeting(Appointment):
         location: str,
         start_time: datetime,
         end_time: datetime,
+        owner_user_id: str | None = None,
     ) -> None:
-        super().__init__(appointment_id, name, location, start_time, end_time)
+        super().__init__(
+            appointment_id,
+            name,
+            location,
+            start_time,
+            end_time,
+            owner_user_id=owner_user_id,
+        )
         self.participants: list[str] = []   # stores userId strings
         self.is_group_meeting = True
 
@@ -52,8 +60,16 @@ class GroupMeeting(Appointment):
         location: str,
         start_time: datetime,
         end_time: datetime,
+        owner_user_id: str | None = None,
     ) -> "GroupMeeting":
-        return cls(str(uuid.uuid4()), name, location, start_time, end_time)
+        return cls(
+            str(uuid.uuid4()),
+            name,
+            location,
+            start_time,
+            end_time,
+            owner_user_id=owner_user_id,
+        )
 
     def __repr__(self) -> str:  # pragma: no cover
         return (

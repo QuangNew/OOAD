@@ -10,6 +10,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from models.appointment import Appointment
+from ui.dialog_layout import ScrollableDialogLayout
 
 _INK      = "#111111"
 _CANVAS   = "#FFFFFF"
@@ -39,36 +40,35 @@ class ConflictDialog:
 
         self.top = tk.Toplevel(parent)
         self.top.title("Time Conflict Detected")
-        self.top.configure(bg=_CANVAS)
-        self.top.resizable(False, False)
         self.top.transient(parent)
         self.top.grab_set()
 
-        parent.update_idletasks()
-        px, py = parent.winfo_rootx(), parent.winfo_rooty()
-        pw, ph = parent.winfo_width(), parent.winfo_height()
-        w, h = 420, 300
-        self.top.geometry(f"{w}x{h}+{px + (pw - w)//2}+{py + (ph - h)//2}")
+        self._layout = ScrollableDialogLayout(
+            parent,
+            self.top,
+            width=460,
+            height=360,
+            min_width=380,
+            min_height=260,
+            bg=_CANVAS,
+        )
 
         self._conflict = conflict
         self._build()
 
     def _build(self) -> None:
-        root = self.top
+        root = self._layout.body
 
         # ── Title ──────────────────────────────────────────────────
-        title_bar = tk.Frame(root, bg=_CANVAS)
-        title_bar.pack(fill="x", padx=24, pady=(20, 4))
+        title_bar = self._layout.header
         tk.Label(
             title_bar, text="⚠  Time Conflict Detected",
             bg=_CANVAS, fg=_INK, font=("Segoe UI", 12, "bold"),
         ).pack(side="left")
 
-        ttk.Separator(root, orient="horizontal").pack(fill="x", padx=24, pady=(4, 16))
-
         # ── Warning card ───────────────────────────────────────────
         card = tk.Frame(root, bg=_WARN_BG, bd=0)
-        card.pack(fill="x", padx=24, pady=(0, 16))
+        card.pack(fill="x", pady=(0, 16))
         inner = tk.Frame(card, bg=_WARN_BG)
         inner.pack(fill="x", padx=14, pady=12)
 
@@ -103,12 +103,11 @@ class ConflictDialog:
             root, text="Do you want to replace the existing appointment?",
             bg=_CANVAS, fg=_BODY, font=("Segoe UI", 10),
             wraplength=370, justify="left",
-        ).pack(padx=24, anchor="w")
+        ).pack(anchor="w")
 
         # ── Buttons ────────────────────────────────────────────────
-        ttk.Separator(root, orient="horizontal").pack(fill="x", padx=24, pady=(12, 0))
-        btn_row = tk.Frame(root, bg=_CANVAS)
-        btn_row.pack(fill="x", padx=24, pady=(12, 20))
+        btn_row = self._layout.footer
+        btn_row.grid_columnconfigure(1, weight=1)
 
         tk.Button(
             btn_row, text="Keep Old",
@@ -116,7 +115,7 @@ class ConflictDialog:
             font=("Segoe UI", 10), padx=16, pady=7,
             activebackground=_HAIRLINE, relief="flat",
             command=self._keep,
-        ).pack(side="left")
+        ).grid(row=0, column=0, sticky="w")
 
         tk.Button(
             btn_row, text="Replace  →",
@@ -125,7 +124,7 @@ class ConflictDialog:
             activebackground="#DC2626", activeforeground="white",
             relief="flat",
             command=self._replace,
-        ).pack(side="right")
+        ).grid(row=0, column=2, sticky="e")
 
     def _keep(self) -> None:
         self.user_choice = "cancel"

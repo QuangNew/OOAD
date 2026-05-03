@@ -1,0 +1,14 @@
+{
+  "appointmentId": "4c93a392-783b-406e-8c3f-86fd6b19506a",
+  "name": "test",
+  "location": "test",
+  "startTime": "2026-05-15T09:00:00",
+  "endTime": "2026-05-15T10:00:00",
+  "isGroupMeeting": false,
+  "reminders": [
+    {
+      "reminderId": "77ccaf5e-9e1e-4add-b6ee-5c29cd5dc4e5",
+      "message": "..."
+    }
+  ]
+}

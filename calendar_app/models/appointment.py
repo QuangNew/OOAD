@@ -25,12 +25,14 @@ class Appointment:
         location: str,
         start_time: datetime,
         end_time: datetime,
+        owner_user_id: str | None = None,
     ) -> None:
         self.appointment_id: str = appointment_id
         self.name: str = name
         self.location: str = location
         self.start_time: datetime = start_time
         self.end_time: datetime = end_time
+        self.owner_user_id: str | None = owner_user_id
         self.reminders: list[Reminder] = []
         self.is_group_meeting: bool = False
 
@@ -65,8 +67,9 @@ class Appointment:
         location: str,
         start_time: datetime,
         end_time: datetime,
+        owner_user_id: str | None = None,
     ) -> "Appointment":
-        return cls(str(uuid.uuid4()), name, location, start_time, end_time)
+        return cls(str(uuid.uuid4()), name, location, start_time, end_time, owner_user_id=owner_user_id)
 
     def __repr__(self) -> str:  # pragma: no cover
         return (

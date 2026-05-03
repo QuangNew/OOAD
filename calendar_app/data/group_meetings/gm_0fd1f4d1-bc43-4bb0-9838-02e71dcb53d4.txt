@@ -1,0 +1,15 @@
+{
+  "appointmentId": "0fd1f4d1-bc43-4bb0-9838-02e71dcb53d4",
+  "name": "Product Review",
+  "location": "Zoom",
+  "startTime": "2026-05-05T14:00:00",
+  "endTime": "2026-05-05T15:30:00",
+  "isGroupMeeting": true,
+  "ownerUserId": "473ef04d-1906-4c90-936a-bf0b53be4537",
+  "reminders": [],
+  "participants": [
+    "473ef04d-1906-4c90-936a-bf0b53be4537",
+    "design.mai",
+    "qa.an"
+  ]
+}

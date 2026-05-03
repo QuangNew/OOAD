@@ -278,7 +278,14 @@ class AppointmentController:
         end: datetime,
         reminder_msg: str,
     ) -> Appointment:
-        appt = Appointment(str(uuid.uuid4()), name, location, start, end)
+        appt = Appointment(
+            str(uuid.uuid4()),
+            name,
+            location,
+            start,
+            end,
+            owner_user_id=self.current_user.user_id,
+        )
         if reminder_msg and reminder_msg.strip():
             rem = Reminder.create(reminder_msg.strip())
             appt.add_reminder(rem)
@@ -294,7 +301,13 @@ class AppointmentController:
         participant_ids: list[str],
         include_current_user: bool = True,
     ) -> GroupMeeting:
-        meeting = GroupMeeting.create(name, location, start, end)
+        meeting = GroupMeeting.create(
+            name,
+            location,
+            start,
+            end,
+            owner_user_id=self.current_user.user_id,
+        )
         if include_current_user:
             meeting.add_participant(self.current_user)
 
@@ -316,7 +329,14 @@ class AppointmentController:
         end: datetime,
         reminder_msg: str,
     ) -> Appointment:
-        appt = Appointment(existing.appointment_id, name, location, start, end)
+        appt = Appointment(
+            existing.appointment_id,
+            name,
+            location,
+            start,
+            end,
+            owner_user_id=existing.owner_user_id or self.current_user.user_id,
+        )
         self._apply_reminder(appt, reminder_msg)
         return appt
 
@@ -330,7 +350,14 @@ class AppointmentController:
         reminder_msg: str,
         participant_ids: list[str],
     ) -> GroupMeeting:
-        meeting = GroupMeeting(existing.appointment_id, name, location, start, end)
+        meeting = GroupMeeting(
+            existing.appointment_id,
+            name,
+            location,
+            start,
+            end,
+            owner_user_id=existing.owner_user_id or self.current_user.user_id,
+        )
         meeting.add_participant(self.current_user)
 
         for participant_id in participant_ids:

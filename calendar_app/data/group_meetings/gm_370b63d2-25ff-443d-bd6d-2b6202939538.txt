@@ -1,0 +1,15 @@
+{
+  "appointmentId": "370b63d2-25ff-443d-bd6d-2b6202939538",
+  "name": "Sprint Planning",
+  "location": "Main Meeting Room",
+  "startTime": "2026-05-04T09:00:00",
+  "endTime": "2026-05-04T10:00:00",
+  "isGroupMeeting": true,
+  "ownerUserId": "473ef04d-1906-4c90-936a-bf0b53be4537",
+  "reminders": [],
+  "participants": [
+    "473ef04d-1906-4c90-936a-bf0b53be4537",
+    "pm.linh",
+    "dev.huy"
+  ]
+}

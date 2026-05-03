@@ -5,6 +5,8 @@ from datetime import date, datetime
 from tkinter import messagebox, ttk
 from typing import Callable
 
+from ui.dialog_layout import ScrollableDialogLayout
+
 
 _INK = "#111111"
 _CANVAS = "#FFFFFF"
@@ -31,16 +33,18 @@ class AppointmentDialog:
 
         self.top = tk.Toplevel(parent)
         self.top.title("Edit Appointment" if mode == "edit" else "Add New Appointment")
-        self.top.configure(bg=_CANVAS)
-        self.top.resizable(False, False)
         self.top.transient(parent)
         self.top.grab_set()
 
-        parent.update_idletasks()
-        px, py = parent.winfo_rootx(), parent.winfo_rooty()
-        pw, ph = parent.winfo_width(), parent.winfo_height()
-        width, height = 500, 620
-        self.top.geometry(f"{width}x{height}+{px + (pw - width)//2}+{py + (ph - height)//2}")
+        self._layout = ScrollableDialogLayout(
+            parent,
+            self.top,
+            width=560,
+            height=680,
+            min_width=460,
+            min_height=420,
+            bg=_CANVAS,
+        )
 
         self._default_date = default_date
         self._build()
@@ -59,8 +63,7 @@ class AppointmentDialog:
         participant_ids = self._initial_data.get("participant_ids", [])
         include_current_user = bool(self._initial_data.get("include_current_user", True))
 
-        title_bar = tk.Frame(self.top, bg=_CANVAS)
-        title_bar.pack(fill="x", padx=24, pady=(20, 4))
+        title_bar = self._layout.header
         tk.Label(
             title_bar,
             text=title_text,
@@ -81,10 +84,7 @@ class AppointmentDialog:
             command=self.top.destroy,
         ).pack(side="right")
 
-        ttk.Separator(self.top, orient="horizontal").pack(fill="x", padx=24, pady=(4, 16))
-
-        body = tk.Frame(self.top, bg=_CANVAS)
-        body.pack(fill="both", expand=True, padx=24)
+        body = self._layout.body
 
         def _label(text: str, required: bool = False) -> None:
             row = tk.Frame(body, bg=_CANVAS)
@@ -153,35 +153,51 @@ class AppointmentDialog:
         _label("Start  (YYYY-MM-DD  HH:MM)", required=True)
         start_row = tk.Frame(body, bg=_CANVAS)
         start_row.pack(fill="x", pady=(0, 12))
+        start_row.grid_columnconfigure(0, weight=3)
+        start_row.grid_columnconfigure(1, weight=2)
         self._var_start_date = tk.StringVar(
             value=start_dt.strftime("%Y-%m-%d") if isinstance(start_dt, datetime) else date_text,
         )
         self._var_start_time = tk.StringVar(
             value=start_dt.strftime("%H:%M") if isinstance(start_dt, datetime) else "09:00",
         )
-        ttk.Entry(start_row, textvariable=self._var_start_date, font=("Segoe UI", 10), width=14).pack(
-            side="left", ipady=4
+        ttk.Entry(start_row, textvariable=self._var_start_date, font=("Segoe UI", 10)).grid(
+            row=0,
+            column=0,
+            sticky="ew",
+            ipady=4,
         )
-        tk.Label(start_row, text="  ", bg=_CANVAS).pack(side="left")
-        ttk.Entry(start_row, textvariable=self._var_start_time, font=("Segoe UI", 10), width=8).pack(
-            side="left", ipady=4
+        ttk.Entry(start_row, textvariable=self._var_start_time, font=("Segoe UI", 10)).grid(
+            row=0,
+            column=1,
+            sticky="ew",
+            padx=(12, 0),
+            ipady=4,
         )
 
         _label("End  (YYYY-MM-DD  HH:MM)", required=True)
         end_row = tk.Frame(body, bg=_CANVAS)
         end_row.pack(fill="x", pady=(0, 12))
+        end_row.grid_columnconfigure(0, weight=3)
+        end_row.grid_columnconfigure(1, weight=2)
         self._var_end_date = tk.StringVar(
             value=end_dt.strftime("%Y-%m-%d") if isinstance(end_dt, datetime) else date_text,
         )
         self._var_end_time = tk.StringVar(
             value=end_dt.strftime("%H:%M") if isinstance(end_dt, datetime) else "10:00",
         )
-        ttk.Entry(end_row, textvariable=self._var_end_date, font=("Segoe UI", 10), width=14).pack(
-            side="left", ipady=4
+        ttk.Entry(end_row, textvariable=self._var_end_date, font=("Segoe UI", 10)).grid(
+            row=0,
+            column=0,
+            sticky="ew",
+            ipady=4,
         )
-        tk.Label(end_row, text="  ", bg=_CANVAS).pack(side="left")
-        ttk.Entry(end_row, textvariable=self._var_end_time, font=("Segoe UI", 10), width=8).pack(
-            side="left", ipady=4
+        ttk.Entry(end_row, textvariable=self._var_end_time, font=("Segoe UI", 10)).grid(
+            row=0,
+            column=1,
+            sticky="ew",
+            padx=(12, 0),
+            ipady=4,
         )
 
         self._group_frame = tk.Frame(body, bg=_CANVAS)
@@ -251,9 +267,8 @@ class AppointmentDialog:
             fill="x", ipady=4
         )
 
-        ttk.Separator(self.top, orient="horizontal").pack(fill="x", padx=24, pady=(12, 0))
-        button_row = tk.Frame(self.top, bg=_CANVAS)
-        button_row.pack(fill="x", padx=24, pady=(12, 20))
+        button_row = self._layout.footer
+        button_row.grid_columnconfigure(1, weight=1)
 
         tk.Button(
             button_row,
@@ -268,7 +283,7 @@ class AppointmentDialog:
             relief="flat",
             activebackground=_HAIRLINE,
             command=self.top.destroy,
-        ).pack(side="left")
+        ).grid(row=0, column=0, sticky="w")
 
         tk.Button(
             button_row,
@@ -283,7 +298,7 @@ class AppointmentDialog:
             relief="flat",
             activebackground="#2563EB",
             command=self._submit,
-        ).pack(side="right")
+        ).grid(row=0, column=2, sticky="e")
 
         self._toggle_group_fields()
         self._toggle_reminder()

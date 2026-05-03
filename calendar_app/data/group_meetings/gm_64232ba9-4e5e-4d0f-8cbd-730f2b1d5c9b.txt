@@ -1,0 +1,15 @@
+{
+  "appointmentId": "64232ba9-4e5e-4d0f-8cbd-730f2b1d5c9b",
+  "name": "Weekly Retrospective",
+  "location": "Innovation Hub",
+  "startTime": "2026-05-07T16:00:00",
+  "endTime": "2026-05-07T16:45:00",
+  "isGroupMeeting": true,
+  "ownerUserId": "473ef04d-1906-4c90-936a-bf0b53be4537",
+  "reminders": [],
+  "participants": [
+    "473ef04d-1906-4c90-936a-bf0b53be4537",
+    "lead.nam",
+    "ops.trang"
+  ]
+}

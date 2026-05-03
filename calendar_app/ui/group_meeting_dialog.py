@@ -11,6 +11,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from models.group_meeting import GroupMeeting
+from ui.dialog_layout import ScrollableDialogLayout
 
 _INK      = "#111111"
 _CANVAS   = "#FFFFFF"
@@ -39,36 +40,35 @@ class GroupMeetingDialog:
 
         self.top = tk.Toplevel(parent)
         self.top.title("Group Meeting Found")
-        self.top.configure(bg=_CANVAS)
-        self.top.resizable(False, False)
         self.top.transient(parent)
         self.top.grab_set()
 
-        parent.update_idletasks()
-        px, py = parent.winfo_rootx(), parent.winfo_rooty()
-        pw, ph = parent.winfo_width(), parent.winfo_height()
-        w, h = 420, 320
-        self.top.geometry(f"{w}x{h}+{px + (pw - w)//2}+{py + (ph - h)//2}")
+        self._layout = ScrollableDialogLayout(
+            parent,
+            self.top,
+            width=460,
+            height=380,
+            min_width=380,
+            min_height=280,
+            bg=_CANVAS,
+        )
 
         self._meeting = meeting
         self._build()
 
     def _build(self) -> None:
-        root = self.top
+        root = self._layout.body
 
         # ── Title ──────────────────────────────────────────────────
-        title_bar = tk.Frame(root, bg=_CANVAS)
-        title_bar.pack(fill="x", padx=24, pady=(20, 4))
+        title_bar = self._layout.header
         tk.Label(
             title_bar, text="📢  Group Meeting Found",
             bg=_CANVAS, fg=_INK, font=("Segoe UI", 12, "bold"),
         ).pack(side="left")
 
-        ttk.Separator(root, orient="horizontal").pack(fill="x", padx=24, pady=(4, 16))
-
         # ── Info card ─────────────────────────────────────────────
         card = tk.Frame(root, bg=_INFO_BG)
-        card.pack(fill="x", padx=24, pady=(0, 16))
+        card.pack(fill="x", pady=(0, 16))
         inner = tk.Frame(card, bg=_INFO_BG)
         inner.pack(fill="x", padx=14, pady=12)
 
@@ -106,12 +106,11 @@ class GroupMeetingDialog:
         tk.Label(
             root, text="Would you like to join this group meeting?",
             bg=_CANVAS, fg=_BODY, font=("Segoe UI", 10),
-        ).pack(padx=24, anchor="w")
+        ).pack(anchor="w")
 
         # ── Buttons ────────────────────────────────────────────────
-        ttk.Separator(root, orient="horizontal").pack(fill="x", padx=24, pady=(12, 0))
-        btn_row = tk.Frame(root, bg=_CANVAS)
-        btn_row.pack(fill="x", padx=24, pady=(12, 20))
+        btn_row = self._layout.footer
+        btn_row.grid_columnconfigure(1, weight=1)
 
         tk.Button(
             btn_row, text="No, New Appt",
@@ -119,7 +118,7 @@ class GroupMeetingDialog:
             font=("Segoe UI", 10), padx=16, pady=7,
             activebackground=_HAIRLINE, relief="flat",
             command=self._new_appt,
-        ).pack(side="left")
+        ).grid(row=0, column=0, sticky="w")
 
         tk.Button(
             btn_row, text="Join  →",
@@ -128,7 +127,7 @@ class GroupMeetingDialog:
             activebackground="#2563EB", activeforeground="white",
             relief="flat",
             command=self._join,
-        ).pack(side="right")
+        ).grid(row=0, column=2, sticky="e")
 
     def _new_appt(self) -> None:
         self.user_choice = "new_appt"

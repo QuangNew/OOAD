@@ -79,7 +79,11 @@ class CalendarUI:
         ).pack(side="left")
         tk.Label(
             header,
-            text=f"User: {self.user.full_name}",
+            text=(
+                f"User: {self.user.full_name}"
+                if not self.user.username
+                else f"User: {self.user.full_name} (@{self.user.username})"
+            ),
             bg=_CANVAS,
             fg=_MUTED,
             font=("Segoe UI", 9),
