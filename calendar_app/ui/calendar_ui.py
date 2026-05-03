@@ -446,10 +446,20 @@ class CalendarUI:
         self._render_calendar()
         self._render_appointments()
 
-    def _open_add_appointment(self) -> None:
+    def _open_add_appointment(self, initial_data: dict | None = None) -> None:
         from ui.appointment_dialog import AppointmentDialog
 
-        AppointmentDialog(self.root, self.active_date, self._on_form_submitted, mode="add")
+        default_date = self.active_date
+        if initial_data is not None and hasattr(initial_data.get("start"), "date"):
+            default_date = initial_data["start"].date()
+
+        AppointmentDialog(
+            self.root,
+            default_date,
+            self._on_form_submitted,
+            mode="add",
+            initial_data=initial_data,
+        )
 
     def _open_appointment_detail(self, appointment) -> None:
         from ui.appointment_detail import AppointmentDetailDialog
@@ -537,6 +547,8 @@ class CalendarUI:
                     form_data["reminder_msg"],
                 )
                 self._refresh()
+            else:
+                self._open_add_appointment(initial_data=form_data)
             return
 
         if result.matched_group_meeting is not None:
