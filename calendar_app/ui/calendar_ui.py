@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import calendar as cal_lib
 import tkinter as tk
-from datetime import date
+from datetime import date, datetime
 from tkinter import messagebox, ttk
 from typing import TYPE_CHECKING
 
@@ -49,10 +49,14 @@ class CalendarUI:
         self.root.minsize(860, 600)
         self.root.configure(bg=_CANVAS)
 
+        self._fired_reminder_ids: set[str] = set()
+        self._reminder_poll_ms = 30000
+
         self._setup_styles()
         self._build_layout()
         self._render_calendar()
         self._render_appointments()
+        self._schedule_reminder_check()
 
     def _setup_styles(self) -> None:
         style = ttk.Style(self.root)
@@ -373,7 +377,7 @@ class CalendarUI:
         if appointment.reminders:
             reminder_label = tk.Label(
                 body,
-                text=f"Reminder: {appointment.reminders[0].message}",
+                text=f"Reminder: {self._format_reminder_text(appointment)}",
                 bg=_CARD,
                 fg=_MUTED,
                 font=("Segoe UI", 9),
@@ -480,6 +484,7 @@ class CalendarUI:
             "start": appointment.start_time,
             "end": appointment.end_time,
             "reminder_msg": appointment.reminders[0].message if appointment.reminders else "",
+            "reminder_minutes_before": appointment.reminders[0].minutes_before if appointment.reminders else 15,
             "is_group_meeting": isinstance(appointment, GroupMeeting),
             "participant_ids": [
                 participant
@@ -504,6 +509,7 @@ class CalendarUI:
                 start=form_data["start"],
                 end=form_data["end"],
                 reminder_msg=form_data["reminder_msg"],
+                reminder_minutes_before=form_data["reminder_minutes_before"],
                 participant_ids=form_data["participant_ids"],
                 include_current_user=form_data["include_current_user"],
             )
@@ -526,6 +532,7 @@ class CalendarUI:
             start=form_data["start"],
             end=form_data["end"],
             reminder_msg=form_data["reminder_msg"],
+            reminder_minutes_before=form_data["reminder_minutes_before"],
         )
 
         if not result.is_valid:
@@ -545,6 +552,7 @@ class CalendarUI:
                     form_data["start"],
                     form_data["end"],
                     form_data["reminder_msg"],
+                    form_data["reminder_minutes_before"],
                 )
                 self._refresh()
             else:
@@ -565,6 +573,7 @@ class CalendarUI:
                     form_data["start"],
                     form_data["end"],
                     form_data["reminder_msg"],
+                    form_data["reminder_minutes_before"],
                 )
             self._refresh()
             return
@@ -579,6 +588,7 @@ class CalendarUI:
             start=form_data["start"],
             end=form_data["end"],
             reminder_msg=form_data["reminder_msg"],
+            reminder_minutes_before=form_data["reminder_minutes_before"],
             participant_ids=form_data.get("participant_ids", []),
         )
         if not result.is_valid:
@@ -611,9 +621,43 @@ class CalendarUI:
     def _show_load_warnings(self) -> None:
         messagebox.showwarning("Load Warnings", "\n".join(self._startup_warnings), parent=self.root)
 
+    def _format_reminder_text(self, appointment) -> str:
+        reminder = appointment.reminders[0]
+        return f"{reminder.offset_label} - {reminder.message}"
+
+    def _schedule_reminder_check(self) -> None:
+        self._check_due_reminders()
+        self.root.after(self._reminder_poll_ms, self._schedule_reminder_check)
+
+    def _check_due_reminders(self) -> None:
+        now = datetime.now()
+        due_reminders: list[tuple] = []
+        for appointment in self.controller.current_calendar.get_all():
+            for reminder in appointment.reminders:
+                if reminder.reminder_id in self._fired_reminder_ids:
+                    continue
+                if reminder.trigger_time(appointment.start_time) <= now < appointment.start_time:
+                    due_reminders.append((appointment, reminder))
+
+        due_reminders.sort(key=lambda item: (item[0].start_time, item[1].minutes_before))
+        for appointment, reminder in due_reminders:
+            self._fired_reminder_ids.add(reminder.reminder_id)
+            self.root.bell()
+            messagebox.showwarning(
+                "Meeting Reminder",
+                (
+                    f"{appointment.name}\n"
+                    f"Starts at {appointment.start_time.strftime('%H:%M')}\n"
+                    f"Reminder: {reminder.offset_label}\n\n"
+                    f"{reminder.message}"
+                ),
+                parent=self.root,
+            )
+
     def _refresh(self) -> None:
         self._render_calendar()
         self._render_appointments()
+        self._check_due_reminders()
 
     def run(self) -> None:
         self.root.mainloop()

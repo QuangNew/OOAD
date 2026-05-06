@@ -41,6 +41,7 @@ class AppointmentController:
         start: datetime,
         end: datetime,
         reminder_msg: str,
+        reminder_minutes_before: int,
     ) -> ValidationResult:
         """
         Orchestrate the full add-appointment flow.
@@ -69,7 +70,7 @@ class AppointmentController:
             return ValidationResult(is_valid=True, matched_group_meeting=match)
 
         # ── Step 4: Normal add ─────────────────────────────────────
-        appt = self._create_appointment(name, location, start, end, reminder_msg)
+        appt = self._create_appointment(name, location, start, end, reminder_msg, reminder_minutes_before)
         self.current_calendar.add_appointment(appt)
         FileStorage.save(appt)
         return ValidationResult(is_valid=True)
@@ -86,12 +87,13 @@ class AppointmentController:
         start: datetime,
         end: datetime,
         reminder_msg: str,
+        reminder_minutes_before: int,
     ) -> None:
         """Remove the conflicting appointment and insert the new one."""
         self.current_calendar.remove_appointment(old_appt)
         FileStorage.delete(old_appt.appointment_id)
 
-        new_appt = self._create_appointment(name, location, start, end, reminder_msg)
+        new_appt = self._create_appointment(name, location, start, end, reminder_msg, reminder_minutes_before)
         self.current_calendar.add_appointment(new_appt)
         FileStorage.save(new_appt)
 
@@ -116,6 +118,7 @@ class AppointmentController:
         start: datetime,
         end: datetime,
         reminder_msg: str,
+        reminder_minutes_before: int,
         participant_ids: list[str] | None = None,
         include_current_user: bool = True,
     ) -> ValidationResult:
@@ -140,6 +143,7 @@ class AppointmentController:
             start,
             end,
             reminder_msg,
+            reminder_minutes_before,
             participant_ids,
             include_current_user=include_current_user,
         )
@@ -161,6 +165,7 @@ class AppointmentController:
         start: datetime,
         end: datetime,
         reminder_msg: str,
+        reminder_minutes_before: int,
         participant_ids: list[str] | None = None,
     ) -> ValidationResult:
         """Update an existing appointment while preserving its identity."""
@@ -184,6 +189,7 @@ class AppointmentController:
                 start,
                 end,
                 reminder_msg,
+                reminder_minutes_before,
                 participant_ids or [],
             )
         else:
@@ -194,6 +200,7 @@ class AppointmentController:
                 start,
                 end,
                 reminder_msg,
+                reminder_minutes_before,
             )
 
         self.current_calendar.remove_appointment(existing)
@@ -215,8 +222,9 @@ class AppointmentController:
         start: datetime,
         end: datetime,
         reminder_msg: str,
+        reminder_minutes_before: int,
     ) -> None:
-        appt = self._create_appointment(name, location, start, end, reminder_msg)
+        appt = self._create_appointment(name, location, start, end, reminder_msg, reminder_minutes_before)
         self.current_calendar.add_appointment(appt)
         FileStorage.save(appt)
 
@@ -277,6 +285,7 @@ class AppointmentController:
         start: datetime,
         end: datetime,
         reminder_msg: str,
+        reminder_minutes_before: int,
     ) -> Appointment:
         appt = Appointment(
             str(uuid.uuid4()),
@@ -286,9 +295,7 @@ class AppointmentController:
             end,
             owner_user_id=self.current_user.user_id,
         )
-        if reminder_msg and reminder_msg.strip():
-            rem = Reminder.create(reminder_msg.strip())
-            appt.add_reminder(rem)
+        self._apply_reminder(appt, reminder_msg, reminder_minutes_before)
         return appt
 
     def _create_group_meeting(
@@ -298,6 +305,7 @@ class AppointmentController:
         start: datetime,
         end: datetime,
         reminder_msg: str,
+        reminder_minutes_before: int,
         participant_ids: list[str],
         include_current_user: bool = True,
     ) -> GroupMeeting:
@@ -316,7 +324,7 @@ class AppointmentController:
             if clean_id and clean_id not in meeting.participants:
                 meeting.participants.append(clean_id)
 
-        self._apply_reminder(meeting, reminder_msg)
+        self._apply_reminder(meeting, reminder_msg, reminder_minutes_before)
 
         return meeting
 
@@ -328,6 +336,7 @@ class AppointmentController:
         start: datetime,
         end: datetime,
         reminder_msg: str,
+        reminder_minutes_before: int,
     ) -> Appointment:
         appt = Appointment(
             existing.appointment_id,
@@ -337,7 +346,7 @@ class AppointmentController:
             end,
             owner_user_id=existing.owner_user_id or self.current_user.user_id,
         )
-        self._apply_reminder(appt, reminder_msg)
+        self._apply_reminder(appt, reminder_msg, reminder_minutes_before)
         return appt
 
     def _rebuild_group_meeting(
@@ -348,6 +357,7 @@ class AppointmentController:
         start: datetime,
         end: datetime,
         reminder_msg: str,
+        reminder_minutes_before: int,
         participant_ids: list[str],
     ) -> GroupMeeting:
         meeting = GroupMeeting(
@@ -365,10 +375,15 @@ class AppointmentController:
             if clean_id and clean_id not in meeting.participants:
                 meeting.participants.append(clean_id)
 
-        self._apply_reminder(meeting, reminder_msg)
+        self._apply_reminder(meeting, reminder_msg, reminder_minutes_before)
         return meeting
 
-    def _apply_reminder(self, appt: Appointment, reminder_msg: str) -> None:
+    def _apply_reminder(
+        self,
+        appt: Appointment,
+        reminder_msg: str,
+        reminder_minutes_before: int,
+    ) -> None:
         if reminder_msg and reminder_msg.strip():
-            rem = Reminder.create(reminder_msg.strip())
+            rem = Reminder.create(reminder_msg.strip(), reminder_minutes_before)
             appt.add_reminder(rem)

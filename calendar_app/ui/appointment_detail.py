@@ -106,7 +106,11 @@ class AppointmentDetailDialog:
                 justify="left",
             ).pack(anchor="w", pady=(10, 0))
 
-        reminder_text = appointment.reminders[0].message if appointment.reminders else "No reminder"
+        reminder_text = (
+            f"{appointment.reminders[0].offset_label} - {appointment.reminders[0].message}"
+            if appointment.reminders
+            else "No reminder"
+        )
         tk.Label(
             body,
             text=f"Reminder: {reminder_text}",

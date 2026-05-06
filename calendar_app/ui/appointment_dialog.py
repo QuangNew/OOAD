@@ -17,6 +17,12 @@ _BODY = "#374151"
 _ACCENT = "#3B82F6"
 _DANGER = "#EF4444"
 
+_REMINDER_OPTIONS = {
+    "15 minutes before": 15,
+    "30 minutes before": 30,
+    "1 hour before": 60,
+}
+
 
 class AppointmentDialog:
     def __init__(
@@ -253,8 +259,32 @@ class AppointmentDialog:
             command=self._toggle_reminder,
         ).pack(anchor="w", pady=(4, 6))
 
+        selected_reminder_label = next(
+            (
+                label
+                for label, minutes in _REMINDER_OPTIONS.items()
+                if minutes == int(self._initial_data.get("reminder_minutes_before", 15))
+            ),
+            "15 minutes before",
+        )
+
         self._reminder_frame = tk.Frame(body, bg=_CANVAS)
         self._reminder_frame.pack(fill="x")
+        tk.Label(
+            self._reminder_frame,
+            text="When",
+            bg=_CANVAS,
+            fg=_MUTED,
+            font=("Segoe UI", 9),
+        ).pack(anchor="w")
+        self._var_reminder_offset = tk.StringVar(value=selected_reminder_label)
+        ttk.Combobox(
+            self._reminder_frame,
+            textvariable=self._var_reminder_offset,
+            values=list(_REMINDER_OPTIONS.keys()),
+            state="readonly",
+            font=("Segoe UI", 10),
+        ).pack(fill="x", ipady=4, pady=(0, 8))
         tk.Label(
             self._reminder_frame,
             text="Message",
@@ -365,6 +395,7 @@ class AppointmentDialog:
             include_current_user = bool(self._var_include_current_user.get())
 
         reminder_msg = self._var_reminder_msg.get().strip() if self._var_reminder_enabled.get() else ""
+        reminder_minutes_before = _REMINDER_OPTIONS.get(self._var_reminder_offset.get(), 15)
 
         self.top.destroy()
         self._on_submit(
@@ -374,6 +405,7 @@ class AppointmentDialog:
                 "start": start,
                 "end": end,
                 "reminder_msg": reminder_msg,
+                "reminder_minutes_before": reminder_minutes_before,
                 "is_group_meeting": is_group_meeting,
                 "participant_ids": participant_ids,
                 "include_current_user": include_current_user,

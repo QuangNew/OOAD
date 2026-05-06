@@ -282,7 +282,11 @@ class FileStorage:
             "isGroupMeeting": appt.is_group_meeting,
             "ownerUserId": appt.owner_user_id,
             "reminders": [
-                {"reminderId": r.reminder_id, "message": r.message}
+                {
+                    "reminderId": r.reminder_id,
+                    "message": r.message,
+                    "minutesBefore": r.minutes_before,
+                }
                 for r in appt.reminders
             ],
         }
@@ -311,6 +315,12 @@ class FileStorage:
             )
 
         for r in data.get("reminders", []):
-            appt.reminders.append(Reminder(r["reminderId"], r["message"]))
+            appt.reminders.append(
+                Reminder(
+                    r["reminderId"],
+                    r["message"],
+                    int(r.get("minutesBefore", 15)),
+                )
+            )
 
         return appt
