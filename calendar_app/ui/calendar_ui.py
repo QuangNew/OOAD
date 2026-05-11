@@ -7,6 +7,7 @@ from tkinter import messagebox, ttk
 from typing import TYPE_CHECKING
 
 from models.group_meeting import GroupMeeting
+from workflow_log import workflow_log
 
 if TYPE_CHECKING:
     from controller.appointment_controller import AppointmentController
@@ -35,6 +36,7 @@ class CalendarUI:
         user: "User",
         startup_warnings: list[str] | None = None,
     ) -> None:
+        workflow_log("UI", "Initialize main calendar UI", f"warnings={len(startup_warnings or [])}")
         self.controller = controller
         self.user = user
         self._startup_warnings = startup_warnings or []
@@ -446,11 +448,13 @@ class CalendarUI:
         self._render_calendar()
 
     def _select_date(self, selected_date: date) -> None:
+        workflow_log("UI", "Select calendar date", selected_date.isoformat())
         self.active_date = selected_date
         self._render_calendar()
         self._render_appointments()
 
     def _open_add_appointment(self, initial_data: dict | None = None) -> None:
+        workflow_log("UI", "Open add appointment flow", f"has_initial_data={initial_data is not None}")
         from ui.appointment_dialog import AppointmentDialog
 
         default_date = self.active_date
@@ -466,16 +470,19 @@ class CalendarUI:
         )
 
     def _open_appointment_detail(self, appointment) -> None:
+        workflow_log("UI", "Open appointment detail", f"type={'group' if isinstance(appointment, GroupMeeting) else 'personal'}")
         from ui.appointment_detail import AppointmentDetailDialog
 
         dialog = AppointmentDetailDialog(self.root, appointment)
         self.root.wait_window(dialog.top)
+        workflow_log("UI", "Appointment detail closed", f"action={dialog.action}")
         if dialog.action == "edit":
             self._open_edit_dialog(appointment)
         elif dialog.action == "delete":
             self._confirm_delete(appointment)
 
     def _open_edit_dialog(self, appointment) -> None:
+        workflow_log("UI", "Open edit appointment flow", f"type={'group' if isinstance(appointment, GroupMeeting) else 'personal'}")
         from ui.appointment_dialog import AppointmentDialog
 
         initial_data = {
@@ -502,7 +509,13 @@ class CalendarUI:
         )
 
     def _on_form_submitted(self, form_data: dict) -> None:
+        workflow_log(
+            "UI",
+            "Receive appointment form",
+            f"type={'group' if form_data.get('is_group_meeting') else 'personal'}",
+        )
         if form_data.get("is_group_meeting"):
+            workflow_log("UI", "Route form to controller", "create_group_meeting")
             result = self.controller.create_group_meeting(
                 name=form_data["name"],
                 location=form_data["location"],
@@ -514,18 +527,22 @@ class CalendarUI:
                 include_current_user=form_data["include_current_user"],
             )
             if not result.is_valid:
+                workflow_log("UI", "Show validation error", result.error_message)
                 messagebox.showerror("Validation Error", result.error_message, parent=self.root)
                 return
             if result.conflict_appointment is not None:
+                workflow_log("UI", "Show group meeting conflict error")
                 messagebox.showerror(
                     "Conflict",
                     f"This group meeting overlaps with '{result.conflict_appointment.name}'.",
                     parent=self.root,
                 )
                 return
+            workflow_log("UI", "Group meeting created", "refresh view")
             self._refresh()
             return
 
+        workflow_log("UI", "Route form to controller", "handle_add_appointment")
         result = self.controller.handle_add_appointment(
             name=form_data["name"],
             location=form_data["location"],
@@ -536,15 +553,19 @@ class CalendarUI:
         )
 
         if not result.is_valid:
+            workflow_log("UI", "Show validation error", result.error_message)
             messagebox.showerror("Validation Error", result.error_message, parent=self.root)
             return
 
         if result.conflict_appointment is not None:
+            workflow_log("UI", "Open conflict dialog")
             from ui.conflict_dialog import ConflictDialog
 
             dialog = ConflictDialog(self.root, result.conflict_appointment)
             self.root.wait_window(dialog.top)
+            workflow_log("UI", "Conflict dialog resolved", f"choice={dialog.user_choice}")
             if dialog.user_choice == "replace":
+                workflow_log("UI", "User chose replacement", "replace_existing_appointment")
                 self.controller.replace_existing_appointment(
                     result.conflict_appointment,
                     form_data["name"],
@@ -554,19 +575,25 @@ class CalendarUI:
                     form_data["reminder_msg"],
                     form_data["reminder_minutes_before"],
                 )
+                workflow_log("UI", "Replacement completed", "refresh view")
                 self._refresh()
             else:
+                workflow_log("UI", "User kept existing appointment", "reopen form")
                 self._open_add_appointment(initial_data=form_data)
             return
 
         if result.matched_group_meeting is not None:
+            workflow_log("UI", "Open group meeting match dialog")
             from ui.group_meeting_dialog import GroupMeetingDialog
 
             dialog = GroupMeetingDialog(self.root, result.matched_group_meeting)
             self.root.wait_window(dialog.top)
+            workflow_log("UI", "Group meeting dialog resolved", f"choice={dialog.user_choice}")
             if dialog.user_choice == "join":
+                workflow_log("UI", "User chose to join group meeting")
                 self.controller.join_existing_group_meeting(result.matched_group_meeting)
             else:
+                workflow_log("UI", "User chose separate appointment", "force_add_appointment")
                 self.controller.force_add_appointment(
                     form_data["name"],
                     form_data["location"],
@@ -575,12 +602,15 @@ class CalendarUI:
                     form_data["reminder_msg"],
                     form_data["reminder_minutes_before"],
                 )
+            workflow_log("UI", "Group match branch completed", "refresh view")
             self._refresh()
             return
 
+        workflow_log("UI", "Appointment created", "refresh view")
         self._refresh()
 
     def _on_edit_form_submitted(self, existing, form_data: dict) -> None:
+        workflow_log("UI", "Receive edit form", f"type={'group' if isinstance(existing, GroupMeeting) else 'personal'}")
         result = self.controller.update_appointment(
             existing,
             name=form_data["name"],
@@ -592,9 +622,11 @@ class CalendarUI:
             participant_ids=form_data.get("participant_ids", []),
         )
         if not result.is_valid:
+            workflow_log("UI", "Show edit validation error", result.error_message)
             messagebox.showerror("Validation Error", result.error_message, parent=self.root)
             return
         if result.conflict_appointment is not None:
+            workflow_log("UI", "Show edit conflict error")
             messagebox.showerror(
                 "Conflict",
                 (
@@ -606,16 +638,20 @@ class CalendarUI:
                 parent=self.root,
             )
             return
+        workflow_log("UI", "Appointment updated", "refresh view")
         self._refresh()
 
     def _confirm_delete(self, appointment) -> None:
+        workflow_log("UI", "Ask delete confirmation", f"type={'group' if isinstance(appointment, GroupMeeting) else 'personal'}")
         if messagebox.askyesno(
             "Delete Appointment",
             f"Delete '{appointment.name}'?\nThis action cannot be undone.",
             icon="warning",
             parent=self.root,
         ):
+            workflow_log("UI", "Delete confirmed", "delete_appointment")
             self.controller.delete_appointment(appointment)
+            workflow_log("UI", "Appointment deleted", "refresh view")
             self._refresh()
 
     def _show_load_warnings(self) -> None:
@@ -640,6 +676,8 @@ class CalendarUI:
                     due_reminders.append((appointment, reminder))
 
         due_reminders.sort(key=lambda item: (item[0].start_time, item[1].minutes_before))
+        if due_reminders:
+            workflow_log("UI", "Show due reminders", f"count={len(due_reminders)}")
         for appointment, reminder in due_reminders:
             self._fired_reminder_ids.add(reminder.reminder_id)
             self.root.bell()
@@ -655,9 +693,12 @@ class CalendarUI:
             )
 
     def _refresh(self) -> None:
+        workflow_log("UI", "Refresh calendar view", self.active_date.isoformat())
         self._render_calendar()
         self._render_appointments()
         self._check_due_reminders()
 
     def run(self) -> None:
+        workflow_log("UI", "Enter main event loop")
         self.root.mainloop()
+        workflow_log("UI", "Leave main event loop")

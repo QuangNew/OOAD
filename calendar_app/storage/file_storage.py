@@ -9,6 +9,7 @@ from models.appointment import Appointment
 from models.group_meeting import GroupMeeting
 from models.reminder import Reminder
 from models.user import User
+from workflow_log import workflow_log
 
 # ---------------------------------------------------------------------------
 # Path layout
@@ -42,12 +43,14 @@ class FileStorage:
 
     @classmethod
     def _warn(cls, message: str) -> None:
+        workflow_log("Storage", "Record load warning", message)
         cls._load_warnings.append(message)
 
     @classmethod
     def consume_warnings(cls) -> list[str]:
         warnings = list(cls._load_warnings)
         cls._load_warnings.clear()
+        workflow_log("Storage", "Consume load warnings", f"count={len(warnings)}")
         return warnings
 
     # ------------------------------------------------------------------
@@ -57,19 +60,25 @@ class FileStorage:
     @classmethod
     def load_accounts(cls) -> list[dict]:
         if not _ACCOUNTS_FILE.exists():
+            workflow_log("Storage", "Load accounts", "accounts_file=missing count=0")
             return []
         try:
             with _ACCOUNTS_FILE.open(encoding="utf-8") as f:
                 payload = json.load(f)
         except (json.JSONDecodeError, OSError):
             cls._warn(f"Could not read accounts file: {_ACCOUNTS_FILE}")
+            workflow_log("Storage", "Load accounts failed")
             return []
 
         if isinstance(payload, dict):
             accounts = payload.get("accounts", [])
-            return accounts if isinstance(accounts, list) else []
+            result = accounts if isinstance(accounts, list) else []
+            workflow_log("Storage", "Load accounts", f"count={len(result)}")
+            return result
         if isinstance(payload, list):
+            workflow_log("Storage", "Load accounts", f"count={len(payload)}")
             return payload
+        workflow_log("Storage", "Load accounts", "unsupported_payload count=0")
         return []
 
     @classmethod
@@ -77,9 +86,11 @@ class FileStorage:
         _DATA_DIR.mkdir(parents=True, exist_ok=True)
         with _ACCOUNTS_FILE.open("w", encoding="utf-8") as f:
             json.dump({"accounts": accounts}, f, indent=2, ensure_ascii=False)
+        workflow_log("Storage", "Save accounts", f"count={len(accounts)}")
 
     @classmethod
     def authenticate_user(cls, username: str, password: str) -> User | None:
+        workflow_log("Storage", "Authenticate user", "start")
         normalized = cls._normalize_username(username)
         password_hash = cls._hash_password(password)
 
@@ -87,26 +98,36 @@ class FileStorage:
             if account.get("username") != normalized:
                 continue
             if account.get("passwordHash") != password_hash:
+                workflow_log("Storage", "Authenticate user", "password_mismatch")
                 return None
-            return cls._user_from_account(account)
+            user = cls._user_from_account(account)
+            workflow_log("Storage", "Authenticate user", f"success user_id={user.user_id}")
+            return user
+        workflow_log("Storage", "Authenticate user", "username_not_found")
         return None
 
     @classmethod
     def register_user(cls, full_name: str, username: str, password: str) -> User:
+        workflow_log("Storage", "Register user", "start")
         clean_name = full_name.strip()
         clean_username = cls._normalize_username(username)
 
         if len(clean_name) < 2:
+            workflow_log("Storage", "Register user blocked", "full_name_too_short")
             raise ValueError("Full name must be at least 2 characters.")
         if len(clean_username) < 3:
+            workflow_log("Storage", "Register user blocked", "username_too_short")
             raise ValueError("Username must be at least 3 characters.")
         if not cls._is_valid_username(clean_username):
+            workflow_log("Storage", "Register user blocked", "invalid_username")
             raise ValueError("Username can contain only letters, numbers, dot, underscore, and dash.")
         if len(password) < 4:
+            workflow_log("Storage", "Register user blocked", "password_too_short")
             raise ValueError("Password must be at least 4 characters.")
 
         accounts = cls.load_accounts()
         if any(account.get("username") == clean_username for account in accounts):
+            workflow_log("Storage", "Register user blocked", "username_exists")
             raise ValueError("Username already exists.")
 
         account = {
@@ -117,7 +138,9 @@ class FileStorage:
         }
         accounts.append(account)
         cls._save_accounts(accounts)
-        return cls._user_from_account(account)
+        user = cls._user_from_account(account)
+        workflow_log("Storage", "Register user", f"success user_id={user.user_id}")
+        return user
 
     @classmethod
     def _user_from_account(cls, account: dict) -> User:
@@ -146,6 +169,7 @@ class FileStorage:
 
     @classmethod
     def seed_demo_meetings_for_user(cls, user: User) -> None:
+        workflow_log("Storage", "Seed demo group meetings", f"user_id={user.user_id}")
         slots = [
             (1, time(9, 0), 60, "Sprint Planning", "Main Meeting Room", ["pm.linh", "dev.huy"]),
             (2, time(14, 0), 90, "Product Review", "Zoom", ["design.mai", "qa.an"]),
@@ -180,6 +204,11 @@ class FileStorage:
         path = folder / f"{prefix}_{appt.appointment_id}.txt"
         with path.open("w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
+        workflow_log(
+            "Storage",
+            "Save calendar item",
+            f"type={'group' if appt.is_group_meeting else 'personal'} appointment_id={appt.appointment_id}",
+        )
 
     @classmethod
     def delete(cls, appointment_id: str) -> None:
@@ -187,12 +216,15 @@ class FileStorage:
             for fpath in folder.glob(f"*_{appointment_id}.txt"):
                 try:
                     fpath.unlink()
+                    workflow_log("Storage", "Delete calendar item", f"appointment_id={appointment_id}")
                 except OSError:
-                    pass
+                    workflow_log("Storage", "Delete calendar item failed", f"appointment_id={appointment_id}")
                 return  # one file per ID
+        workflow_log("Storage", "Delete calendar item skipped", f"appointment_id={appointment_id}")
 
     @classmethod
     def load_all(cls) -> list[Appointment]:
+        workflow_log("Storage", "Load all calendar items", "start")
         cls._ensure_dirs()
         results: list[Appointment] = []
         for folder in (_APPT_DIR, _GM_DIR):
@@ -205,6 +237,7 @@ class FileStorage:
                         results.append(appt)
                 except (json.JSONDecodeError, KeyError, ValueError):
                     cls._warn(f"Skipped unreadable appointment file: {fpath}")
+        workflow_log("Storage", "Load all calendar items", f"count={len(results)}")
         return results
 
     @classmethod
@@ -216,6 +249,7 @@ class FileStorage:
         only when the user is a participant, which keeps the shared meeting
         directory separate from the user's own calendar schedule.
         """
+        workflow_log("Storage", "Load visible calendar items", f"user_id={user_id}")
         items: list[Appointment] = []
         cls._ensure_dirs()
 
@@ -232,6 +266,7 @@ class FileStorage:
         for meeting in cls.load_group_meetings(include_user_id=user_id):
             items.append(meeting)
 
+        workflow_log("Storage", "Loaded visible calendar items", f"count={len(items)}")
         return items
 
     @classmethod
@@ -247,6 +282,11 @@ class FileStorage:
           * include_user_id – keep only meetings that include this user
           * exclude_user_id – drop meetings that include this user
         """
+        workflow_log(
+            "Storage",
+            "Load group meetings",
+            f"include_user_id={include_user_id or '-'} exclude_user_id={exclude_user_id or '-'}",
+        )
         cls._ensure_dirs()
         meetings: list[GroupMeeting] = []
 
@@ -265,6 +305,7 @@ class FileStorage:
             except (json.JSONDecodeError, KeyError, ValueError):
                 cls._warn(f"Skipped unreadable group meeting file: {fpath}")
 
+        workflow_log("Storage", "Loaded group meetings", f"count={len(meetings)}")
         return meetings
 
     # ------------------------------------------------------------------

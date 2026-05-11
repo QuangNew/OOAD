@@ -6,6 +6,7 @@ from tkinter import messagebox, ttk
 from typing import Callable
 
 from ui.dialog_layout import ScrollableDialogLayout
+from workflow_log import workflow_log
 
 
 _INK = "#111111"
@@ -33,6 +34,7 @@ class AppointmentDialog:
         mode: str = "add",
         initial_data: dict | None = None,
     ) -> None:
+        workflow_log("UI", "Open appointment dialog", f"mode={mode}")
         self._on_submit = on_submit
         self._mode = mode
         self._initial_data = initial_data or {}
@@ -346,10 +348,12 @@ class AppointmentDialog:
             self._reminder_frame.pack_forget()
 
     def _submit(self) -> None:
+        workflow_log("UI", "Submit appointment dialog", f"mode={self._mode}")
         name = self._var_name.get().strip()
         location = self._var_location.get().strip()
 
         if not name:
+            workflow_log("UI", "Form validation failed", "missing name")
             messagebox.showerror("Validation Error", "Appointment name cannot be empty.", parent=self.top)
             return
 
@@ -359,6 +363,7 @@ class AppointmentDialog:
                 "%Y-%m-%d %H:%M",
             )
         except ValueError:
+            workflow_log("UI", "Form validation failed", "invalid start date/time")
             messagebox.showerror(
                 "Validation Error",
                 "Start date/time format must be YYYY-MM-DD and HH:MM.",
@@ -372,6 +377,7 @@ class AppointmentDialog:
                 "%Y-%m-%d %H:%M",
             )
         except ValueError:
+            workflow_log("UI", "Form validation failed", "invalid end date/time")
             messagebox.showerror(
                 "Validation Error",
                 "End date/time format must be YYYY-MM-DD and HH:MM.",
@@ -380,6 +386,7 @@ class AppointmentDialog:
             return
 
         if end <= start:
+            workflow_log("UI", "Form validation failed", "end before or equal start")
             messagebox.showerror("Validation Error", "End time must be after start time.", parent=self.top)
             return
 
@@ -396,6 +403,16 @@ class AppointmentDialog:
 
         reminder_msg = self._var_reminder_msg.get().strip() if self._var_reminder_enabled.get() else ""
         reminder_minutes_before = _REMINDER_OPTIONS.get(self._var_reminder_offset.get(), 15)
+        duration_min = int((end - start).total_seconds() // 60)
+        workflow_log(
+            "UI",
+            "Hand form data to calendar UI",
+            (
+                f"type={'group' if is_group_meeting else 'personal'} "
+                f"duration_min={duration_min} reminder={'yes' if reminder_msg else 'no'} "
+                f"participants={len(participant_ids)}"
+            ),
+        )
 
         self.top.destroy()
         self._on_submit(

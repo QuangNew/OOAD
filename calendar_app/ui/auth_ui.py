@@ -5,6 +5,7 @@ from tkinter import messagebox, ttk
 
 from models.user import User
 from storage.file_storage import FileStorage
+from workflow_log import workflow_log
 
 
 _INK = "#111111"
@@ -19,6 +20,7 @@ _ACCENT = "#3B82F6"
 
 class AuthUI:
     def __init__(self) -> None:
+        workflow_log("UI", "Initialize authentication UI")
         self.authenticated_user: User | None = None
         self.root = tk.Tk()
         self.root.title("Calendar App Login")
@@ -199,22 +201,27 @@ class AuthUI:
         entry.grid(row=row + 1, column=0, sticky="ew", ipady=5, pady=(0, 12))
 
     def _handle_login(self) -> None:
+        workflow_log("UI", "Submit login form")
         user = FileStorage.authenticate_user(
             self._login_username.get(),
             self._login_password.get(),
         )
         if user is None:
+            workflow_log("UI", "Login failed")
             messagebox.showerror(
                 "Login Failed",
                 "Username hoặc password không đúng.",
                 parent=self.root,
             )
             return
+        workflow_log("UI", "Login succeeded", f"user_id={user.user_id}")
         self.authenticated_user = user
         self.root.destroy()
 
     def _handle_register(self) -> None:
+        workflow_log("UI", "Submit registration form")
         if self._register_password.get() != self._register_confirm.get():
+            workflow_log("UI", "Registration blocked", "password confirmation mismatch")
             messagebox.showerror(
                 "Register Failed",
                 "Password xác nhận chưa khớp.",
@@ -229,9 +236,11 @@ class AuthUI:
                 self._register_password.get(),
             )
         except ValueError as exc:
+            workflow_log("UI", "Registration failed", str(exc))
             messagebox.showerror("Register Failed", str(exc), parent=self.root)
             return
 
+        workflow_log("UI", "Registration succeeded", f"user_id={user.user_id}")
         FileStorage.seed_demo_meetings_for_user(user)
         messagebox.showinfo(
             "Account Created",
@@ -242,5 +251,7 @@ class AuthUI:
         self.root.destroy()
 
     def run(self) -> User | None:
+        workflow_log("UI", "Enter authentication event loop")
         self.root.mainloop()
+        workflow_log("UI", "Leave authentication event loop")
         return self.authenticated_user

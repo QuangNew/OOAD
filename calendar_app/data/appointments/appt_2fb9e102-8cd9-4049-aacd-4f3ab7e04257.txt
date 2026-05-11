@@ -1,0 +1,16 @@
+{
+  "appointmentId": "2fb9e102-8cd9-4049-aacd-4f3ab7e04257",
+  "name": "AI lecture",
+  "location": "DHBK",
+  "startTime": "2026-05-11T19:00:00",
+  "endTime": "2026-05-11T20:00:00",
+  "isGroupMeeting": false,
+  "ownerUserId": "473ef04d-1906-4c90-936a-bf0b53be4537",
+  "reminders": [
+    {
+      "reminderId": "5818e1fd-47d4-43e0-9072-c93b8cbe866e",
+      "message": ".",
+      "minutesBefore": 30
+    }
+  ]
+}
